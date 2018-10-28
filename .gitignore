@@ -1,0 +1,5 @@
+# ignore any images; exception may be color charts
+*.jpeg
+*.jpg
+*.png
+
