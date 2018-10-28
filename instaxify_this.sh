@@ -58,5 +58,7 @@ mogrify -path $OUTPUT_PATH -filter Triangle -define filter:support=2 -thumbnail 
 rc=$?
 
 echo "$(date '+%Y%m%d %H:%M:%S') Instaxify - $image [$rc]"
-cp $OUTPUT_PATH/$imagename /mnt/psyche/instaxify/
-mv $image $COMPLETED_PATH
+
+if [[ rc -eq 0 ]]; then
+    mv $image $COMPLETED_PATH
+fi
