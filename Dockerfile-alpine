@@ -1,0 +1,16 @@
+FROM alpine:3.8
+RUN apk --no-cache add \
+    bash \
+    imagemagick \
+    inotify-tools \
+    && adduser -h / -D -H instaxify \
+    && mkdir -p /input /output /completed
+
+ADD auto_instaxify.sh instaxify.sh instaxify_this.sh /
+ADD calibration /calibration
+USER instaxify
+
+# Run auto_instaxify.sh which will by default watch /input
+# /input, /output, and /completed should be volume-mounted from host
+CMD ["/auto_instaxify.sh"]
+
