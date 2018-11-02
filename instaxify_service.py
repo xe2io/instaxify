@@ -173,7 +173,7 @@ class InstaxifyHTTPRequestHandler(BaseHTTPRequestHandler):
 
 
 
-httpd = HTTPServer(('', 443), InstaxifyHTTPRequestHandler)
+httpd = HTTPServer(('', 8443), InstaxifyHTTPRequestHandler)
 # TODO: don't hardcode
 key = base64.b64encode(b"instax:").decode('ascii')
 
