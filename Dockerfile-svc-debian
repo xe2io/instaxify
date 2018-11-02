@@ -1,0 +1,12 @@
+FROM registry.xe2/debian:stretch-slim
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+    && apt-get install -y \
+    python3 \
+    python3-requests \
+    python3-magic \
+    python3-pillow \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* 
+
+# Run requires certs mapped to /cert, script in /, calibration profiles in /calibration
