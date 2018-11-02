@@ -1,0 +1,21 @@
+User Story:
+User uploads an image via web browser (target: android chrome), which then displays or downloads (preferred) a resized image for printing.
+
+- assume image is already finalized (e.g. w/ snapseed) and has proper aspect ratio (4:3).
+- resulting image is converted to 640x480, 254 dpi.
+- stretch: apply printing profile: -~1/2ev, increase saturation, increase contrast, white balance/color correction
+- test: printed image is visually similar to LCD display (phone, camera, etc.)
+
+
+Prototype:
+phase 1: bash script to do conversion
+
+web-based listener- go, node.js
+docker container
+
+
+Notes:
+https://www.smashingmagazine.com/2015/06/efficient-image-resizing-with-imagemagick/
+https://github.com/fawick/speedtest-resize
+https://github.com/daddye/trez
+
