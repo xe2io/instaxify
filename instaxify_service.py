@@ -122,13 +122,13 @@ class InstaxifyHTTPRequestHandler(BaseHTTPRequestHandler):
             # Process image, return to client as image
             try:
                 # Early detection of non-image (pythonic way would to try to parse and throw exception)
-                if not magic.detect_from_content(file_data).mime_type.startswith('image/'):
+                if not magic.from_buffer(file_data, mime=True).startswith('image/'):
                     raise TypeError
 
                 # should automatically call resp_bytes.close() to free BytesIO object when completed
                 resp_bytes = instax.convert(file_data)
                 resp_body = resp_bytes.getvalue()
-                resp_type = magic.detect_from_content(resp_body).mime_type;
+                resp_type = magic.from_buffer(resp_body, mime=True);
 
                 # Have a valid response (hopefully an image)
                 self.send_response(200)
