@@ -15,5 +15,5 @@ ADD instaxify_service.py /
 
 EXPOSE 8443
 
-ENTRYPOINT ["python3"]
+ENTRYPOINT ["python3", "-u"]
 CMD ["/instaxify_service.py"]

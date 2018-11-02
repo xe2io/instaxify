@@ -12,6 +12,10 @@ from PIL import Image
 from PIL import ImageCms
 from PIL import ImageFilter
 
+# Redirect stderr to stdout for running in Docker container TODO: fix logging
+import sys
+sys.stderr = sys.stdout
+
 class InstaxConvert(object):
     def __init__(self):
         # TODO: constructor?
@@ -57,6 +61,7 @@ class InstaxConvert(object):
 
 
 # TODO: Hold onto this since we create a global xform profile
+print("Creating ICC conversion profile...")
 instax = InstaxConvert()
 
 
@@ -180,5 +185,7 @@ key = base64.b64encode(b"instax:").decode('ascii')
 httpd.socket = ssl.wrap_socket (httpd.socket, 
         keyfile="cert/cert.key", 
         certfile="cert/cert.crt", server_side=True)
+
+print("Starting conversion service.")
 
 httpd.serve_forever()
