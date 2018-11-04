@@ -12,9 +12,8 @@ from PIL import Image
 from PIL import ImageCms
 from PIL import ImageFilter
 
-# Redirect stderr to stdout for running in Docker container TODO: fix logging
-import sys
-sys.stderr = sys.stdout
+# For path splitting
+from os.path import splitext
 
 class InstaxConvert(object):
     def __init__(self):
@@ -34,7 +33,7 @@ class InstaxConvert(object):
 
     def convert(self, img_byte):
         payload_bytes = io.BytesIO(img_byte)
-        im_orig = Image.open(payload_bytes)
+        im_orig = Image.open(payload_bytes).convert('RGB')
 
         # Calculate resized image size, scale by longest edge
         resize_ratio = max(im_orig.size)/self.max_dim
@@ -74,7 +73,6 @@ class InstaxifyHTTPRequestHandler(BaseHTTPRequestHandler):
 
     def do_AUTHHEAD(self):
         self.send_response(401)
-        #self.send_header('WWW-Authenticate', 'Basic realm=\"Give me scratches?\"')
         self.send_header('WWW-Authenticate', 'Basic')
         self.send_header('Content-type', 'text/html')
         self.end_headers()
@@ -105,6 +103,13 @@ class InstaxifyHTTPRequestHandler(BaseHTTPRequestHandler):
             pass
 
     def handle_post_data(self):
+    
+        print("\nClient: {} Payload Size: {} UA: {}".format(
+            ':'.join(str(i) for i in self.client_address), 
+            self.headers['Content-Length'],
+            self.headers['User-Agent']
+        ))
+
         # Don't accept large payloads; doesn't handle case when clients spoof this
         if int(self.headers['Content-Length']) > InstaxifyHTTPRequestHandler.max_payload_size:
             self.send_error(413, 'Image is too large.') 
@@ -123,6 +128,8 @@ class InstaxifyHTTPRequestHandler(BaseHTTPRequestHandler):
         
         try:
             file_data = form[InstaxifyHTTPRequestHandler.image_payload_field].file.read()
+            filename = form[InstaxifyHTTPRequestHandler.image_payload_field].filename
+            print("Filename: {}".format(filename))
            
             # Process image, return to client as image
             try:
@@ -135,12 +142,63 @@ class InstaxifyHTTPRequestHandler(BaseHTTPRequestHandler):
                 resp_body = resp_bytes.getvalue()
                 resp_type = magic.from_buffer(resp_body, mime=True);
 
-                # Have a valid response (hopefully an image)
-                self.send_response(200)
-                self.send_header('Content-Type', resp_type)
-                self.send_header('Content-Length', len(resp_body))
-                self.end_headers()
-                self.wfile.write(resp_body)
+                if not resp_type.startswith('image/'):
+                    # Server failed to process image, give a 500-class response
+                    self.send_error(500, 'Unable to process image.')
+                else:
+                    # Capture the image and encode to base64 so we can push to 
+                    # browser as <img> and embed js code to download, since the
+                    # image is not stored.
+
+                    resp_buf = io.BytesIO()
+
+                    # Show form before displaying image
+                    resp_buf.write(self._get_form())
+
+                    # TODO: Move this to convert class
+                    conv_type = "instaxify"
+
+                    # Craft download filename from original filename and mime type
+                    conv_filename = "{}-{}.{}".format(
+                        splitext(filename)[0],
+                        conv_type,
+                        resp_type.replace("image/", "")
+                    )
+
+                    #onclick = "alert(this.getAttribute(\"download\"))"
+                    # Firefox requires link to be in the body to be clicked
+                    onclick = '''
+                        var link = document.createElement("a");
+                        link.download = this.getAttribute("download");
+                        link.href = this.getAttribute("src");
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    '''
+
+                    # TODO: implement get img tag method in instaxify object
+                    resp_buf.write("<img download='{}' src='data:{};base64,{}'\n onClick='{}' width='100%' />".format(
+                        conv_filename, 
+                        resp_type, 
+                        base64.b64encode(resp_body).decode(),
+                        onclick
+                    ).encode())
+
+                    # Get length of buffer for response length
+                    length = resp_buf.tell()
+                    
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/html; charset=utf-8')
+                    self.send_header('Content-Length', str(length))
+                    self.end_headers()
+                    # Use getvalue instead of getbuffer view so we can close the bytesio object
+                    self.wfile.write(resp_buf.getvalue())
+
+                    # Free response buffer
+                    # TODO: maybe this should be a with?
+                    resp_buf.close()
+
+                # Cleanup
                 del resp_body
                 resp_bytes.close()
                 
@@ -161,21 +219,38 @@ class InstaxifyHTTPRequestHandler(BaseHTTPRequestHandler):
     def send_error(self, http_code, message):
         # Assume no responses have been sent
         self.send_response(http_code)
-        self.send_header('Content-Type', 'text/plain; charset=utf-8')
-        self.end_headers()
-        self.wfile.write(bytes(message, 'utf-8'))
+        if self._is_interactive():
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(self._get_form())
+            self.wfile.write(bytes(message, 'utf-8'))
+
+        else:
+            self.send_header('Content-Type', 'text/plain; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(bytes(message, 'utf-8'))
 
     def show_get_form(self):
         self.send_response(200)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.end_headers()
-        self.wfile.write(b'''
+        self.wfile.write(self._get_form())
+
+    def _get_form(self):
+        return(b'''
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>input { font-size: 4vw; }</style>
         <form action="/" method="post" enctype="multipart/form-data">
-            <input type="file" name="f" value="" />
+            <input type="file" name="f" />
             <input type="submit" value="Convert" />
         </form>
+        
         ''')
 
+    def _is_interactive(self):
+        # TODO: guess whether this is interactive browser by UA so API-like
+        # requests can skip generating forms or other user-friendly bits
+        return True
 
 
 httpd = HTTPServer(('', 8443), InstaxifyHTTPRequestHandler)
