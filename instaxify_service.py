@@ -17,7 +17,6 @@ from os.path import splitext
 
 class InstaxConvert(object):
     def __init__(self):
-        # TODO: constructor?
         input_profile = "calibration/sRGB.icm"
         proof_profile = "calibration/instax-sp1_00.icc"
         self.max_dim = 640
@@ -59,7 +58,7 @@ class InstaxConvert(object):
         return output_img
 
 
-# TODO: Hold onto this since we create a global xform profile
+# Hold onto this since we create a global xform profile
 print("Creating ICC conversion profile...")
 instax = InstaxConvert()
 
@@ -71,36 +70,11 @@ class InstaxifyHTTPRequestHandler(BaseHTTPRequestHandler):
     # Maximum acceptable payload size = 15MB (allow for full-size jpg, but ideally would be downsized/cropped already)
     max_payload_size = 15 * 1024 * 1024
 
-    def do_AUTHHEAD(self):
-        self.send_response(401)
-        self.send_header('WWW-Authenticate', 'Basic')
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-        self.wfile.write(b'Unauthorized.')
-
     def do_GET(self):
-        global key
-        if self.headers.get('Authorization') == None:
-            self.do_AUTHHEAD()
-            pass
-        elif self.headers.get('Authorization') == 'Basic '+str(key):
-            self.show_get_form()
-            pass
-        else:
-            self.do_AUTHHEAD()
-            pass
+        self.show_get_form()
 
     def do_POST(self):
-        global key
-        if self.headers.get('Authorization') == None:
-            self.do_AUTHHEAD()
-            pass
-        elif self.headers.get('Authorization') == 'Basic '+str(key):
-            self.handle_post_data()
-            pass
-        else:
-            self.do_AUTHHEAD()
-            pass
+        self.handle_post_data()
 
     def handle_post_data(self):
     
@@ -195,7 +169,6 @@ class InstaxifyHTTPRequestHandler(BaseHTTPRequestHandler):
                     self.wfile.write(resp_buf.getvalue())
 
                     # Free response buffer
-                    # TODO: maybe this should be a with?
                     resp_buf.close()
 
                 # Cleanup
@@ -254,12 +227,6 @@ class InstaxifyHTTPRequestHandler(BaseHTTPRequestHandler):
 
 
 httpd = HTTPServer(('', 8443), InstaxifyHTTPRequestHandler)
-# TODO: don't hardcode
-key = base64.b64encode(b"instax:").decode('ascii')
-
-httpd.socket = ssl.wrap_socket (httpd.socket, 
-        keyfile="cert/cert.key", 
-        certfile="cert/cert.crt", server_side=True)
 
 print("Starting conversion service.")
 

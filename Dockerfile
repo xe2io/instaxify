@@ -1,4 +1,4 @@
-FROM alpine:3.8
+FROM alpine:latest
 RUN apk --no-cache add \
     python3 \
     py3-pillow \
@@ -8,10 +8,9 @@ RUN apk --no-cache add \
     && adduser -h / -D -H instaxify 
 
 USER instaxify
-# Run requires certs mapped to /cert, script in /, calibration profiles in /calibration
+# Run requires script in /, calibration profiles in /calibration
 ADD calibration /calibration
 ADD instaxify_service.py /
-
 
 EXPOSE 8443
 
